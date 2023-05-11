@@ -1,4 +1,4 @@
-/* Applied Labor Economics */
+/* Applied Labor Economics - Project */
 clear all 
 set more off 
 
@@ -10,14 +10,14 @@ global temp "C:\Users\Public\Documents\Darricau_Blanco\Code\Code_Stata\temp"
 global out "C:\Users\Public\Documents\Darricau_Blanco\Output"
 
 ********************************************************************************
-****		Création, nettoyage, fusion des bases 							****
+****		Cleaning, creating and describing the data	    	          ****
 ********************************************************************************
 
-*** Récupération des individus d'intérêt ***
-do "$code\1_recup_individus.do"
+*** Get id of all individuals to keep for regression ***
+do "$code\1_recup_id.do"
 
-*** Création de la base pour les regressions ***
-do "$code\2_creation_base.do"
+*** Create the final dataset for regression ***
+do "$code\2_dataset_creation.do"
 
-*** Statistiques descriptives *** 
-do "$code\3_stats_desc.do"
+*** Descriptive statistics *** 
+do "$code\3_desc_stats.do"
