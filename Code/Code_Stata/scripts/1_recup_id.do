@@ -5,7 +5,7 @@
 clear all
 set more off
 
-/* 0. Individus effectivemtn passés par PE */
+/* 0. Individus effectivemnt passés par PE */
 
 /* On ne veut que des individus ayant effectué au moins un rdv à PE */
 
