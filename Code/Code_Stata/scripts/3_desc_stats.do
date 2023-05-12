@@ -56,12 +56,31 @@ preserve
 	title("Duration, gender and socio-professional category \label{threeway_cat_cs1_M}")
 restore
 
-* Wage hour and gender
-estpost tabstat wage_hour, by(sx) stat(mean)
-eststo table_5
-esttab table_5 using "$out/1_Tables/twoway_hwage_sex.tex", replace ///
-cells("mean(fmt(2))") label collabels(none) /// 
-title("Hourly wage and gender \label{twoway_hwage_sex}")
+
+* Duration, gender and hourly wage
+* Female
+preserve
+	keep if sx == 0
+	eststo clear
+	estpost tabstat wage_hour, by(cat_duree_parcours)
+	eststo table_5
+	esttab table_5 using "$out/1_Tables/threeway_cat_wage_F.tex", replace ///
+	cells("b(fmt(2))") unstack noobs  label collabels(none) /// 
+	title("Duration, gender and hourly wage \label{threeway_cat_wage_F}")
+restore
+
+*Male
+preserve
+	keep if sx == 1
+	eststo clear
+	estpost tabstat wage_hour, by(cat_duree_parcours)
+	eststo table_6
+	esttab table_6 using "$out/1_Tables/threeway_cat_wage_M.tex", replace ///
+	cells("b(fmt(2))") unstack noobs  label collabels(none) /// 
+	title("Duration, gender and hourly wage \label{threeway_cat_wage_M}")
+restore
+
+
 
 
 ta group cs1, m
