@@ -80,7 +80,8 @@ calculate_aggte <- function(data=df, alpha=0.05, nb_last_cat=6, aggte_type="simp
   aggte_df <- data.frame(cat_parcours = c(-1),
                          sx = c(0),
                          att = c(0),
-                         se = c(0))
+                         se = c(0),
+                         avg_wage = c(0))
   
   # We calculate the ATT and we aggregate for each sex and category
   for (cat_duree in 0:nb_last_cat){
@@ -121,10 +122,21 @@ calculate_aggte <- function(data=df, alpha=0.05, nb_last_cat=6, aggte_type="simp
                    type = aggte_type,
                    na.rm = TRUE)
     
+    # Average hourly wage - last period before treatment
+    df_parcours$ref_period <- df_parcours$group - ant[(1+cat_duree)] - 1
+    df_avg_wage <- df_parcours[df_parcours$period == df_parcours$ref_period,]
+    avg_wages <-c()
+    for (i in 0:1){
+      df_avg_wage_sx <- df_avg_wage[df_avg_wage$sx == i,]
+      avg_wages <- c(avg_wages, mean(df_avg_wage_sx$wage_hour))
+    }
+    
+    
     # AGGTE are stocked in a same dataframe
-    aggte_df[nrow(aggte_df) + 1,] = list(cat_duree, 0, agg_f[[1]], agg_f[[2]])
-    aggte_df[nrow(aggte_df) + 1,] = list(cat_duree, 1, agg_m[[1]], agg_m[[2]])
+    aggte_df[nrow(aggte_df) + 1,] = list(cat_duree, 0, agg_f[[1]], agg_f[[2]], avg_wages[1])
+    aggte_df[nrow(aggte_df) + 1,] = list(cat_duree, 1, agg_m[[1]], agg_m[[2]], avg_wages[2])
   }
+  
   # Removal of the initialization line of the dataframe
   aggte_df <- aggte_df[aggte_df$cat_parcours != -1,]
   return (aggte_df)
@@ -134,7 +146,7 @@ calculate_aggte <- function(data=df, alpha=0.05, nb_last_cat=6, aggte_type="simp
 # ****                         4. Graph of AGGTE                          **** #
 # **************************************************************************** #
 
-graph_aggte <- function(data=df, alpha=0.05, nb_last_cat=6, aggte_type="simple", covariates = NULL) {
+graph_aggte <- function(data=df, alpha=0.05, nb_last_cat=6, aggte_type="simple", covariates = NULL, perc = FALSE) {
   
   # Calculate of the AGGTE
   aggte_df <- calculate_aggte(data, alpha, nb_last_cat, aggte_type, covariates)
@@ -142,7 +154,15 @@ graph_aggte <- function(data=df, alpha=0.05, nb_last_cat=6, aggte_type="simple",
   # A column for confidence intervals is added
   aggte_df$ci <- aggte_df$se * qnorm(1 - alpha/2)
   aggte_df$sx <- as.factor(aggte_df$sx)
+  
+  # A column of percentage wage gain/loss is added
+  if (perc) {
+    aggte_df$evo <- (aggte_df$att / aggte_df$avg_wage) * 100
+    aggte_df$se2 <- (aggte_df$se / aggte_df$avg_wage) * 100
+    aggte_df$ci2 <- aggte_df$se2 * qnorm(1 - alpha/2)
+  }
   print(aggte_df)
+  print(perc)
   
   x_lab <- c("0" = "Less than 1 month",
     "1" = "Less than 3 month",
@@ -155,33 +175,61 @@ graph_aggte <- function(data=df, alpha=0.05, nb_last_cat=6, aggte_type="simple",
 
   pd <- position_dodge(0.1)
   
-  agg_err_bars <- ggplot(aggte_df, aes(x=cat_parcours, y=att, colour=sx, group=sx)) +
-    geom_errorbar(aes(ymin=att-se, ymax=att+se, group=sx), width=.5, size = 1, position=pd) +
-    geom_line(position=pd, size=1) +
-    geom_point(position=pd, size=4, shape=21, fill="white") +
-    xlab("Unemployment duration category") +
-    ylab("Overall Treatment Effect on Treated") +
-    scale_colour_hue(name="Gender",
-                     breaks=c(0,1),
-                     labels=c("Women", "Men"),
-                     l=40) +
-    ggtitle("Effect of employment program on hourly wage") +
-    scale_y_continuous() +
-    # scale_x_discrete() +
-    theme_bw() +
-    theme(plot.title = element_text(hjust = 0.5, size = 16),
-          axis.title.x = element_text(size = 14),
-          axis.title.y = element_text(size = 14),
-          legend.justification  = c(0,0),
-          legend.position = c(0.005,0.005))
+  if (perc) {
+    agg_err_bars <- ggplot(aggte_df, aes(x=cat_parcours, y=evo, colour=sx, group=sx)) +
+      geom_errorbar(aes(ymin=evo-se2, ymax=evo+se2, group=sx), width=.5, size = 1, position=pd) +
+      geom_line(position=pd, size=1) +
+      geom_point(position=pd, size=4, shape=21, fill="white") +
+      xlab("Unemployment duration category") +
+      ylab("Average Treatment Effect on Treated over the first 5 periods") +
+      scale_colour_hue(name="Gender",
+                       breaks=c(0,1),
+                       labels=c("Women", "Men"),
+                       l=40) +
+      ggtitle("Effect of unemployment program on hourly wage") +
+      scale_y_continuous() +
+      # scale_x_discrete() +
+      theme_bw() +
+      theme(plot.title = element_text(hjust = 0.5, size = 16),
+            axis.title.x = element_text(size = 14),
+            axis.title.y = element_text(size = 14),
+            legend.justification  = c(0,0),
+            legend.position = c(0.005,0.005))
+  }
+  else {
+    agg_err_bars <- ggplot(aggte_df, aes(x=cat_parcours, y=att, colour=sx, group=sx)) +
+      geom_errorbar(aes(ymin=att-se, ymax=att+se, group=sx), width=.5, size = 1, position=pd) +
+      geom_line(position=pd, size=1) +
+      geom_point(position=pd, size=4, shape=21, fill="white") +
+      xlab("Unemployment duration category") +
+      ylab("Average Treatment Effect on Treated over the first 5 periods") +
+      scale_colour_hue(name="Gender",
+                       breaks=c(0,1),
+                       labels=c("Women", "Men"),
+                       l=40) +
+      ggtitle("Effect of unemployment program on hourly wage") +
+      scale_y_continuous() +
+      # scale_x_discrete() +
+      theme_bw() +
+      theme(plot.title = element_text(hjust = 0.5, size = 16),
+            axis.title.x = element_text(size = 14),
+            axis.title.y = element_text(size = 14),
+            legend.justification  = c(0,0),
+            legend.position = c(0.005,0.005))
+  }
+  
   
   # Modfication of filename depending on covariates
   suffixe <- ""
   if (!is.null(covariates)){
     suffixe <- paste0("_", paste0(covariates, collapse = "_"))
   }
+  sfx <- "lvl"
+  if (perc){
+    sfx <- "prc"
+  }
   
-  ggsave(glue("aggte{suffixe}_{aggte_type}.png"),
+  ggsave(glue("aggte{suffixe}_{aggte_type}_{sfx}.png"),
          plot = agg_err_bars,
          device = "png",
          path = glue("{output_path}/0_Figures"))
