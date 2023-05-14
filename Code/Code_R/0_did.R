@@ -14,8 +14,8 @@ library(glue)
 library(did)
 library(ggplot2)
 
-data_path <- "C:/Users/Public/Documents/Darricau_Blanco/Data"
-output_path <- "C:/Users/Public/Documents/Darricau_Blanco/Output"
+data_path <- "C:/Users/louis/Downloads/Applied-Labor-Econ/Data"
+output_path <- "C:/Users/louis/Downloads/Applied-Labor-Econ/Output"
 
 list_sex = c("Women",
              "Men")
@@ -28,6 +28,11 @@ list_cat_duree = c("Less than 1 month",
                    "Less than 3 years", 
                    "More than 3 years")
 
+# List of the number of quarters of anticipation for each category of program
+# duration. This enables to compare the first hourly wage after treatment with
+# the last hourly wage before unemployment. This value is different for each
+# category of program duration as it is a measure of the duration of the
+# unemployment spell (in quarters)
 ant <- c(0,0,1,2,3,4,6,12)
 
 # **************************************************************************** #
@@ -37,19 +42,24 @@ ant <- c(0,0,1,2,3,4,6,12)
 df <- read.csv(paste0(data_path, "/final/database_did_trim_dummies.csv"))
 
 format_df <- function(data=df){
+  # A function to transform the factorize the variable containing the different
+  # categories of program duration.
   data$cat_parcours <- as.factor(ifelse(data$cat_duree_parcours == "Less than 1 month", 0,
-                               ifelse(data$cat_duree_parcours == "Less than 3 month", 1,
-                               ifelse(data$cat_duree_parcours == "Less than 6 month", 2,
-                               ifelse(data$cat_duree_parcours == "Less than 9 month", 3,
-                               ifelse(data$cat_duree_parcours == "Less than 12 month", 4,
-                               ifelse(data$cat_duree_parcours == "Less than 18 month", 5,
-                               ifelse(data$cat_duree_parcours == "Less than 3 years", 6, 
-                               ifelse(data$cat_duree_parcours == "More than 3 years", 7, 9)))))))))
-    data <- subset(data, select = -c(cat_duree_parcours))
-    return (data)
+                                        ifelse(data$cat_duree_parcours == "Less than 3 month", 1,
+                                               ifelse(data$cat_duree_parcours == "Less than 6 month", 2,
+                                                      ifelse(data$cat_duree_parcours == "Less than 9 month", 3,
+                                                             ifelse(data$cat_duree_parcours == "Less than 12 month", 4,
+                                                                    ifelse(data$cat_duree_parcours == "Less than 18 month", 5,
+                                                                           ifelse(data$cat_duree_parcours == "Less than 3 years", 6, 
+                                                                                  ifelse(data$cat_duree_parcours == "More than 3 years", 7, 9)))))))))
+  data <- subset(data, select = -c(cat_duree_parcours))
+  return (data)
 }
 
 cov_formula <- function(data, covariates){
+  # A function that transform the list of covariates into a formula the model
+  # will use to include all the dummies (except one) associated with each of
+  # the covariates '''
   cov_names <- ""
   for (elem in covariates){
     new_names <- head(grep(glue("^{elem}_"), names(data), value = TRUE), -1)
@@ -165,14 +175,14 @@ graph_aggte <- function(data=df, alpha=0.05, nb_last_cat=6, aggte_type="simple",
   print(perc)
   
   x_lab <- c("0" = "Less than 1 month",
-    "1" = "Less than 3 month",
-    "2" = "Less than 6 month",
-    "3" = "Less than 9 month",
-    "4" = "Less than 12 month",
-    "5" = "Less than 18 month",
-    "6" = "Less than 3 years",
-    "7" = "More than 3 years")
-
+             "1" = "Less than 3 month",
+             "2" = "Less than 6 month",
+             "3" = "Less than 9 month",
+             "4" = "Less than 12 month",
+             "5" = "Less than 18 month",
+             "6" = "Less than 3 years",
+             "7" = "More than 3 years")
+  
   pd <- position_dodge(0.1)
   
   if (perc) {
@@ -242,7 +252,7 @@ scale <- list(c(-0.5,1),c(-0.5,1),c(-1,1),c(-1,2),c(-5,5),c(-5,5),c(-10,10))
 
 
 graph_aggte_es <- function(data=df, alpha=0.05, nb_last_cat=6, covariates = NULL){
-
+  
   # aggte_df_dynamic <- calculate_aggte(data, alpha, ant, nb_last_cat, "dynamic", covariates)
   sex <- c("F","H")
   
@@ -267,21 +277,22 @@ graph_aggte_es <- function(data=df, alpha=0.05, nb_last_cat=6, covariates = NULL
     
     for (i in 0:1){
       out <- att_gt(yname = "wage_hour_",
-                      gname = "group",
-                      idname = "idfhda",
-                      tname = "period",
-                      xformla = xformula,
-                      data = df_parcours[df_parcours$sx == i,],
-                      est_method = "ipw",
-                      control_group = "notyettreated",
-                      allow_unbalanced_panel = TRUE,
-                      anticipation = ant[(1+cat_duree)])
+                    gname = "group",
+                    idname = "idfhda",
+                    tname = "period",
+                    xformla = xformula,
+                    data = df_parcours[df_parcours$sx == i,],
+                    est_method = "ipw",
+                    control_group = "notyettreated",
+                    allow_unbalanced_panel = TRUE,
+                    anticipation = ant[(1+cat_duree)])
       
       agg_es <- aggte(out,
                       balance_e = 5,
                       min_e = -5,
                       type = "dynamic",
-                      na.rm = TRUE)
+                      na.rm = TRUE,
+                      alp = alpha)
       
       print(agg_es)
       
